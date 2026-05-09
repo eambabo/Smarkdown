@@ -1,0 +1,53 @@
+name: Smarkdown
+options:
+  bundleIdPrefix: com.eambabo
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+packages:
+  Down:
+    url: https://github.com/johnxnguyen/Down
+    from: 0.11.0
+  AppAuth:
+    url: https://github.com/openid/AppAuth-iOS
+    from: 1.7.0
+
+targets:
+  Smarkdown:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Smarkdown
+        excludes:
+          - "**/*.md"
+    resources:
+      - path: Smarkdown/Resources
+    info:
+      path: Smarkdown/Supporting Files/Info.plist
+      properties:
+        CFBundleDisplayName: Smarkdown
+        LSMinimumSystemVersion: "14.0"
+        NSHumanReadableCopyright: "Copyright © 2026 Ethan. All rights reserved."
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              - com.eambabo.smarkdown
+    entitlements:
+      path: Smarkdown/Supporting Files/Smarkdown.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.security.network.client: true
+    settings:
+      base:
+        PRODUCT_NAME: Smarkdown
+        SWIFT_VERSION: "6.0"
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_STYLE: Automatic
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        INFOPLIST_FILE: "Smarkdown/Supporting Files/Info.plist"
+    dependencies:
+      - package: Down
+      - package: AppAuth
