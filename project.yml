@@ -23,6 +23,7 @@ targets:
       - path: Smarkdown
         excludes:
           - "**/*.md"
+          - "Resources/**"
     resources:
       - path: Smarkdown/Resources
     info:
@@ -47,7 +48,6 @@ targets:
         ENABLE_HARDENED_RUNTIME: YES
         CODE_SIGN_STYLE: Automatic
         MACOSX_DEPLOYMENT_TARGET: "14.0"
-        INFOPLIST_FILE: "Smarkdown/Supporting Files/Info.plist"
     dependencies:
       - package: Down
       - package: AppAuth

@@ -18,7 +18,6 @@
 		9048F05332104E7AB5008C49 /* SmarkdownApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95E7CDD9F0733E3806469042 /* SmarkdownApp.swift */; };
 		D62F07B16A00E6F410C91CCD /* Down in Frameworks */ = {isa = PBXBuildFile; productRef = B91606E5620BFDE20BDE98B1 /* Down */; };
 		E03614853FA2084D148083FF /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E969573F8C5246E5E75C2A67 /* ExportView.swift */; };
-		FD2D7DFD599B65640723B217 /* preview-styles.css in Resources */ = {isa = PBXBuildFile; fileRef = CD977E1F74C78E4671B1C058 /* preview-styles.css */; };
 		FF340E0E18DB3B5757106463 /* MarkdownEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7CF9950C02F1DCF99D4B4A /* MarkdownEditorView.swift */; };
 /* End PBXBuildFile section */
 
@@ -31,7 +30,6 @@
 		53CC35C8C19B296EC6A20BB3 /* FileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileStore.swift; sourceTree = "<group>"; };
 		69A1CBBC7456A4B9F5B8025E /* Smarkdown.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Smarkdown.entitlements; sourceTree = "<group>"; };
 		95E7CDD9F0733E3806469042 /* SmarkdownApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmarkdownApp.swift; sourceTree = "<group>"; };
-		CD977E1F74C78E4671B1C058 /* preview-styles.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = "preview-styles.css"; sourceTree = "<group>"; };
 		D74CC62E2F46CA0658991A29 /* MarkdownPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownPreviewView.swift; sourceTree = "<group>"; };
 		DD3A7DC27EBB871E8F3980BE /* FileListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileListView.swift; sourceTree = "<group>"; };
 		E968C8E38E2A0DAA593716D2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -128,7 +126,6 @@
 				AE0BD52DBCD306877DEB54E6 /* App */,
 				7D5B25AF4828253EB29B72F1 /* Core */,
 				564A98434E09610EC5693063 /* Features */,
-				E4986DB1E5E5B5DD61532677 /* Resources */,
 				788C1F622F235422EF8EFDE4 /* Shared */,
 				FD6BDDDC6B8D24099B2F0408 /* Supporting Files */,
 			);
@@ -157,14 +154,6 @@
 			children = (
 			);
 			path = UI;
-			sourceTree = "<group>";
-		};
-		E4986DB1E5E5B5DD61532677 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				CD977E1F74C78E4671B1C058 /* preview-styles.css */,
-			);
-			path = Resources;
 			sourceTree = "<group>";
 		};
 		F2506812FB83CB469FBE7974 /* Editor */ = {
@@ -208,7 +197,6 @@
 			buildConfigurationList = A70EC28EEBCC4448705B62E4 /* Build configuration list for PBXNativeTarget "Smarkdown" */;
 			buildPhases = (
 				00D7C97D24165DF3414E91CF /* Sources */,
-				02B9BED002156989C5CC6494 /* Resources */,
 				796A57F13696EA955EAEC478 /* Frameworks */,
 			);
 			buildRules = (
@@ -260,17 +248,6 @@
 			);
 		};
 /* End PBXProject section */
-
-/* Begin PBXResourcesBuildPhase section */
-		02B9BED002156989C5CC6494 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				FD2D7DFD599B65640723B217 /* preview-styles.css in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		00D7C97D24165DF3414E91CF /* Sources */ = {
