@@ -12,9 +12,11 @@
 		11FD199D488CE840C205FA9F /* MarkdownRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 213ECE70E06925C107EA79EF /* MarkdownRenderer.swift */; };
 		13AB759A2087D4418E94896F /* FileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53CC35C8C19B296EC6A20BB3 /* FileStore.swift */; };
 		1D002E3B1324E9A77DF68BC3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E968C8E38E2A0DAA593716D2 /* ContentView.swift */; };
+		28A7E6E297FA555E8158364B /* EditorCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC740CC2247D889E41C86305 /* EditorCoordinator.swift */; };
 		2938E61AFD7B3919355B5567 /* MarkdownDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FDECCD74EAB83543E696D84 /* MarkdownDocument.swift */; };
 		4072BDB1122963BC76DB9011 /* AppAuth in Frameworks */ = {isa = PBXBuildFile; productRef = C21BE299E7AA3C1A7104E30F /* AppAuth */; };
 		641904A5B12A93E8BE4CE436 /* GoogleAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB299456B98B84E97F80190D /* GoogleAuthService.swift */; };
+		71F149664C9D63FA1D684BB6 /* EditorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851FAB32CDEC0E0E57944DA8 /* EditorViewModel.swift */; };
 		9048F05332104E7AB5008C49 /* SmarkdownApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95E7CDD9F0733E3806469042 /* SmarkdownApp.swift */; };
 		C2D179CFA8BE91F67CF11067 /* AutoSaveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24F48BE879BDE9B2F57EFA7 /* AutoSaveManager.swift */; };
 		D62F07B16A00E6F410C91CCD /* Down in Frameworks */ = {isa = PBXBuildFile; productRef = B91606E5620BFDE20BDE98B1 /* Down */; };
@@ -30,11 +32,13 @@
 		3D7CF9950C02F1DCF99D4B4A /* MarkdownEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownEditorView.swift; sourceTree = "<group>"; };
 		53CC35C8C19B296EC6A20BB3 /* FileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileStore.swift; sourceTree = "<group>"; };
 		69A1CBBC7456A4B9F5B8025E /* Smarkdown.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Smarkdown.entitlements; sourceTree = "<group>"; };
+		851FAB32CDEC0E0E57944DA8 /* EditorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorViewModel.swift; sourceTree = "<group>"; };
 		95E7CDD9F0733E3806469042 /* SmarkdownApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmarkdownApp.swift; sourceTree = "<group>"; };
 		D74CC62E2F46CA0658991A29 /* MarkdownPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownPreviewView.swift; sourceTree = "<group>"; };
 		DD3A7DC27EBB871E8F3980BE /* FileListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileListView.swift; sourceTree = "<group>"; };
 		E968C8E38E2A0DAA593716D2 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		E969573F8C5246E5E75C2A67 /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
+		EC740CC2247D889E41C86305 /* EditorCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorCoordinator.swift; sourceTree = "<group>"; };
 		F24F48BE879BDE9B2F57EFA7 /* AutoSaveManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoSaveManager.swift; sourceTree = "<group>"; };
 		FB299456B98B84E97F80190D /* GoogleAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -162,6 +166,8 @@
 		F2506812FB83CB469FBE7974 /* Editor */ = {
 			isa = PBXGroup;
 			children = (
+				EC740CC2247D889E41C86305 /* EditorCoordinator.swift */,
+				851FAB32CDEC0E0E57944DA8 /* EditorViewModel.swift */,
 				3D7CF9950C02F1DCF99D4B4A /* MarkdownEditorView.swift */,
 			);
 			path = Editor;
@@ -259,6 +265,8 @@
 			files = (
 				C2D179CFA8BE91F67CF11067 /* AutoSaveManager.swift in Sources */,
 				1D002E3B1324E9A77DF68BC3 /* ContentView.swift in Sources */,
+				28A7E6E297FA555E8158364B /* EditorCoordinator.swift in Sources */,
+				71F149664C9D63FA1D684BB6 /* EditorViewModel.swift in Sources */,
 				E03614853FA2084D148083FF /* ExportView.swift in Sources */,
 				0C88637AD4354F1B5526E0F4 /* FileListView.swift in Sources */,
 				13AB759A2087D4418E94896F /* FileStore.swift in Sources */,
