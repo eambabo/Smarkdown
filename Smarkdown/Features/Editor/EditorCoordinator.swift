@@ -11,16 +11,35 @@ final class EditorCoordinator: NSObject, NSTextViewDelegate {
     /// the current ViewModel state without retaining a stale copy.
     var onTextChange: (String) -> Void
 
+    /// True while AppKit is processing a user-initiated text change.
+    /// updateNSView checks this flag to avoid overwriting the text view's
+    /// content during the brief window between a keystroke and the
+    /// @Observable update propagating through SwiftUI.
+    var isUserEditing = false
+
     init(onTextChange: @escaping (String) -> Void) {
         self.onTextChange = onTextChange
     }
 
     // MARK: - NSTextViewDelegate
 
+    func textView(
+        _ textView: NSTextView,
+        shouldChangeTextIn range: NSRange,
+        replacementString: String?
+    ) -> Bool {
+        // Raised before AppKit applies the change. Set the flag so
+        // updateNSView knows not to touch the text view's string until
+        // textDidChange has fired and the ViewModel has been updated.
+        isUserEditing = true
+        return true
+    }
+
     func textDidChange(_ notification: Notification) {
         guard let textView = notification.object as? NSTextView else { return }
         // This is the hot path — keep it under 1ms.
         // No Markdown parsing, no view updates — just forward the string.
         onTextChange(textView.string)
+        isUserEditing = false
     }
 }

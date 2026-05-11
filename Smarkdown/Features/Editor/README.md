@@ -28,29 +28,76 @@ Replace `NSTextView` + `NSViewRepresentable` with `UITextView` + `UIViewRepresen
 
 | File | Responsibility |
 |---|---|
-| `MarkdownEditorView.swift` | `NSViewRepresentable` wrapping `NSScrollView > NSTextView`. Configures the text view and handles the `updateNSView` guard. |
+| `MarkdownEditorView.swift` | `NSViewRepresentable` returning an `NSView` container with the scroll view pinned inside via AutoLayout. Configures the text view and handles the `updateNSView` guard. |
 | `EditorCoordinator.swift` | `NSTextViewDelegate` implementation. Receives `textDidChange` and routes text to the ViewModel. Kept in its own file to separate AppKit delegate logic from the SwiftUI wrapper. |
 | `EditorViewModel.swift` | `@MainActor @Observable` ViewModel. Owns the current document, handles text changes, coordinates with `AutoSaveManager`. |
 
 ---
 
-## The updateNSView guard
+## Sizing strategy
 
-This is the single most important performance detail in the entire editor:
+`NSScrollView` has a subtle interaction with SwiftUI's layout engine: its `intrinsicContentSize` is driven by the document view's content size, not the available space. For an empty or short document, this collapses the scroll view to one line of height. SwiftUI honours this intrinsic size even when the parent requests `maxHeight: .infinity`.
+
+The fix is a two-part approach:
+
+**1. NSView container pattern**
+
+`makeNSView` returns a plain `NSView` container instead of the `NSScrollView` directly. SwiftUI controls the container's frame. The `NSScrollView` is pinned to all four edges of the container via AppKit AutoLayout constraints:
 
 ```swift
-func updateNSView(_ scrollView: NSScrollView, context: Context) {
-    guard let textView = scrollView.documentView as? NSTextView else { return }
-    if textView.string != text {
-        textView.string = text
-        textView.typingAttributes = Self.defaultTypingAttributes
-    }
+func makeNSView(context: Context) -> NSView {
+    let container = NSView()
+    let scrollView = NSTextView.scrollableTextView()
+    // ... configure textView ...
+    scrollView.translatesAutoresizingMaskIntoConstraints = false
+    container.addSubview(scrollView)
+    NSLayoutConstraint.activate([
+        scrollView.topAnchor.constraint(equalTo: container.topAnchor),
+        scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+        scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+    ])
+    return container
 }
 ```
 
-`updateNSView` is called by SwiftUI on every render pass — window resize, focus change, toolbar update, anything. Without the guard, every render would call `textView.string = text`, which resets the cursor to position 0 and triggers a full re-layout. The guard short-circuits this: if the text view already has the right content (because the user just typed it), nothing happens.
+SwiftUI owns the outer frame; AppKit constraints ensure the scroll view always fills it. The two layout systems each own their lane with no conflict.
 
-The guard only allows updates when content changed *externally* — i.e., when a new document is opened and `text` (from the ViewModel) no longer matches what the text view is showing.
+**2. HSplitView frame in ContentView**
+
+`HSplitView` (backed by `NSSplitView`) has no intrinsic height of its own. Without an explicit `.frame(maxHeight: .infinity)` on the `HSplitView`, SwiftUI may not propagate the full window height to its children:
+
+```swift
+HSplitView { ... }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+```
+
+Both fixes are required. The AutoLayout approach alone does not work if the SwiftUI layout never proposes full height to the container.
+
+---
+
+## The updateNSView guard
+
+`updateNSView` is called by SwiftUI on every render pass — window resize, focus change, toolbar update, anything. Two guards prevent it from corrupting editor state:
+
+**Guard 1 — isUserEditing**
+
+```swift
+guard !context.coordinator.isUserEditing else { return }
+```
+
+Set in `shouldChangeTextIn` (before AppKit applies the change) and cleared in `textDidChange` (after the ViewModel is updated). Prevents a race where SwiftUI renders with a stale `text` value during the brief window between a keystroke and `@Observable` propagating.
+
+**Guard 2 — string equality**
+
+```swift
+if textView.string != text {
+    textView.string = text
+    textView.typingAttributes = Self.defaultTypingAttributes
+}
+```
+
+Only writes to the text view when content changed *externally* (e.g. a new document was opened). Without this, every render pass calls `textView.string = text`, which resets the cursor to position 0 and triggers a full re-layout. Setting `.string` also clears typing attributes, so they must be restored afterward.
 
 ---
 
@@ -68,7 +115,7 @@ The guard only allows updates when content changed *externally* — i.e., when a
 | `backgroundColor` | `NSColor.textBackgroundColor` | Dynamic system color — updates automatically for dark mode |
 | `typingAttributes` | SF Mono 14pt + `NSColor.labelColor` | Monospace font for source editing; `labelColor` is dynamic for dark mode |
 
-`NSTextView.scrollableTextView()` is used to create the scroll view + text view pair. This class method sets up the sizing relationships (vertical resize, horizontal wrap, scroll view linkage) correctly — more reliable than configuring them manually.
+`NSTextView.scrollableTextView()` is used to create the scroll view + text view pair. This class method correctly sets up the sizing relationships (vertical resize, horizontal wrap, scroll view linkage) between the two views.
 
 ---
 
@@ -77,9 +124,10 @@ The guard only allows updates when content changed *externally* — i.e., when a
 ```
 User types
     │
+    ▼ NSTextViewDelegate.shouldChangeTextIn → isUserEditing = true
     ▼ NSTextViewDelegate.textDidChange (on main thread, inside text system)
 EditorCoordinator.textDidChange
-    │ calls onTextChange(string) — a closure stored from makeCoordinator/updateNSView
+    │ calls onTextChange(string) — isUserEditing = false
     ▼
 EditorViewModel.handleTextChange
     │ updates content, document.content, document.modifiedAt
@@ -88,7 +136,8 @@ EditorViewModel.handleTextChange
 SwiftUI detects @Observable property change (content)
     │
     ▼ updateNSView called
-Guard: textView.string == text → no-op ✓ (cursor preserved)
+Guard 1: isUserEditing == false ✓
+Guard 2: textView.string == text → no-op ✓ (cursor preserved)
 ```
 
 ---

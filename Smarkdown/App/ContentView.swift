@@ -9,19 +9,24 @@ struct ContentView: View {
                 text: viewModel.content,
                 onTextChange: { viewModel.handleTextChange($0) }
             )
-            .frame(minWidth: 300)
+            .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
 
             MarkdownPreviewView()
-                .frame(minWidth: 300)
+                .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationTitle(viewModel.document?.displayName ?? "Smarkdown")
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItem(placement: .automatic) {
                 Button {
                     try? viewModel.createNewDocument()
                 } label: {
                     Label("New Document", systemImage: "doc.badge.plus")
                 }
+                // Explicit shortcut so this button is never triggered by
+                // bare Return/Enter, which .primaryAction placement can cause
+                // on macOS when the responder chain resolves ambiguously.
+                .keyboardShortcut("n", modifiers: .command)
             }
         }
         .onAppear {
