@@ -54,7 +54,13 @@ final class AutoSaveManager {
 
     private func flush() {
         guard let document = currentDocument else { return }
-        try? fileStore.save(document)
+        do {
+            try fileStore.save(document)
+        } catch {
+            // V1: log save failures to the console so they surface during development.
+            // V2: surface to the user via an error bar or status indicator.
+            assertionFailure("AutoSaveManager: save failed — \(error)")
+        }
     }
 
     private func observeResignActive() {

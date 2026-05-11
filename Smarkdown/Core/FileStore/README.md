@@ -81,7 +81,19 @@ This is the Swift-native debounce pattern. No Combine, no DispatchWorkItem, no T
 
 `NSApplication.willResignActiveNotification` triggers `saveNow()`, which cancels the pending Task and flushes immediately. This ensures content is never lost when the user switches to another app.
 
-The notification observer uses `queue: nil` (delivers on the posting thread), then hops to `@MainActor` explicitly via `Task { @MainActor in ... }` to safely call `saveNow()`.
+The observer is implemented as a long-lived `Task { @MainActor in for await _ in ... }` loop over `NotificationCenter`'s async notification sequence. This pattern was chosen over `NotificationCenter.addObserver(forName:queue:using:)` for a Swift 6 concurrency reason: the callback-based `addObserver` returns an `NSObjectProtocol`, which is not `Sendable`. Storing it as a property and releasing it from `deinit` (which is nonisolated) would be a compiler error in Swift 6. `Task` is `Sendable`, so it can safely be cancelled from `deinit`.
+
+```swift
+// Safe in Swift 6 — Task is Sendable
+deinit {
+    pendingTask?.cancel()
+    observerTask?.cancel()
+}
+```
+
+### Error handling
+
+`flush()` catches save errors and calls `assertionFailure` in debug builds, which crashes the app in development so failures don't go unnoticed. In release builds, `assertionFailure` is a no-op and the save is silently skipped. V2 should surface persistent failures to the user via a status bar indicator or alert.
 
 ### iOS portability
 

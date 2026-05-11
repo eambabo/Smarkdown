@@ -28,7 +28,8 @@ final class FileStore {
     // MARK: - Directory setup
 
     private func createDirectoryIfNeeded() {
-        guard !FileManager.default.fileExists(atPath: baseDirectory.path()) else { return }
+        // withIntermediateDirectories: true succeeds silently if the directory
+        // already exists, so no pre-flight fileExists check is needed.
         try? FileManager.default.createDirectory(at: baseDirectory, withIntermediateDirectories: true)
     }
 
@@ -78,12 +79,17 @@ final class FileStore {
 
     // MARK: - Creating
 
+    // DateFormatter is expensive to initialize — allocate once and reuse.
+    private static let filenameFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd-HHmmss"
+        return f
+    }()
+
     /// Creates a new empty .md file with a timestamp-based filename and returns it.
     /// Filename format: YYYY-MM-DD-HHmmss.md
     func createNew() throws -> MarkdownDocument {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd-HHmmss"
-        let filename = "\(formatter.string(from: Date())).md"
+        let filename = "\(FileStore.filenameFormatter.string(from: Date())).md"
         let url = baseDirectory.appending(path: filename, directoryHint: .notDirectory)
         let now = Date()
 
