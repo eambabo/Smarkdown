@@ -20,6 +20,15 @@ final class EditorViewModel {
     /// The live text content of the editor. Updated on every keystroke.
     var content: String = ""
 
+    /// Non-observable mirror of `content` used only in handleTextChange's guard.
+    ///
+    /// The @Observable macro wraps `content.getter` with ObservationRegistrar.access,
+    /// which modifies an internal tracking dictionary. On macOS 26, this dictionary
+    /// resize crashes when the getter is called from an AppKit notification callback
+    /// (not a SwiftUI render pass). @ObservationIgnored bypasses the macro wrapper
+    /// so this property is a plain ivar — safe to read from any context.
+    @ObservationIgnored private var _contentSnapshot: String = ""
+
     /// Full HTML page for the preview pane (includes doctype, head, CSS).
     /// Set immediately when a document is opened so the first render is instant.
     /// Serves as the "baseline" the web view loads on a document switch.
@@ -49,7 +58,8 @@ final class EditorViewModel {
     /// Updates in-memory state, schedules a debounced save, and schedules
     /// a debounced preview render (300ms).
     func handleTextChange(_ newContent: String) {
-        guard newContent != content else { return }
+        guard newContent != _contentSnapshot else { return }
+        _contentSnapshot = newContent
         content = newContent
 
         guard var doc = document else { return }
@@ -72,6 +82,7 @@ final class EditorViewModel {
         let doc = try fileStore.load(metadata)
         document = doc
         content = doc.content
+        _contentSnapshot = doc.content
         renderPreviewImmediately(markdown: doc.content)
         autoSaveManager.saveNow()
     }
@@ -82,6 +93,7 @@ final class EditorViewModel {
         let doc = try fileStore.createNew()
         document = doc
         content = doc.content
+        _contentSnapshot = doc.content
         renderPreviewImmediately(markdown: doc.content)
     }
 
