@@ -11,8 +11,11 @@ struct ContentView: View {
             )
             .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
 
-            MarkdownPreviewView()
-                .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
+            MarkdownPreviewView(
+                pageHTML: viewModel.previewPageHTML,
+                bodyHTML: viewModel.previewBodyHTML
+            )
+            .frame(minWidth: 300, maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationTitle(viewModel.document?.displayName ?? "Smarkdown")

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Owns the current document and drives the editor surface.
+/// Owns the current document and drives both the editor and preview surfaces.
 ///
 /// Why @Observable over ObservableObject:
 /// @Observable tracks which specific properties a view accessed and only
@@ -18,31 +18,36 @@ final class EditorViewModel {
     private(set) var document: MarkdownDocument?
 
     /// The live text content of the editor. Updated on every keystroke.
-    /// Also used by the preview pane (Phase 4) to trigger re-renders.
     var content: String = ""
 
-    /// Placeholder for the rendered HTML string produced by MarkdownRenderer.
-    /// Populated in Phase 4 when PreviewDebouncer is wired up.
-    var renderedHTML: String = ""
+    /// Full HTML page for the preview pane (includes doctype, head, CSS).
+    /// Set immediately when a document is opened so the first render is instant.
+    /// Serves as the "baseline" the web view loads on a document switch.
+    private(set) var previewPageHTML: String = ""
+
+    /// Debounced body HTML fragment. Nil means "no incremental update pending."
+    /// The preview view uses this to swap body content without reloading the page.
+    private(set) var previewBodyHTML: String = ""
 
     // MARK: - Dependencies
 
     private let fileStore: FileStore
     private let autoSaveManager: AutoSaveManager
+    private let previewDebouncer: PreviewDebouncer
 
     // MARK: - Init
 
     init(fileStore: FileStore = .shared) {
         self.fileStore = fileStore
         self.autoSaveManager = AutoSaveManager(fileStore: fileStore)
+        self.previewDebouncer = PreviewDebouncer()
     }
 
     // MARK: - Text changes
 
     /// Called by EditorCoordinator on every keystroke.
-    /// Updates in-memory state and schedules a debounced save.
-    /// The guard prevents unnecessary work when the string hasn't changed
-    /// (e.g. pressing an arrow key fires textDidChange but doesn't alter content).
+    /// Updates in-memory state, schedules a debounced save, and schedules
+    /// a debounced preview render (300ms).
     func handleTextChange(_ newContent: String) {
         guard newContent != content else { return }
         content = newContent
@@ -52,31 +57,47 @@ final class EditorViewModel {
         doc.modifiedAt = Date()
         document = doc
         autoSaveManager.schedule(document: doc)
+
+        previewDebouncer.schedule(markdown: newContent) { [weak self] bodyHTML in
+            self?.previewBodyHTML = bodyHTML
+        }
     }
 
     // MARK: - Document lifecycle
 
     /// Loads full content for a document selected from the file list.
-    /// `metadata` comes from FileStore.loadAll() and has an empty content field;
-    /// this method fetches the actual text from disk.
+    /// Renders an immediate (non-debounced) preview so the pane is populated
+    /// the moment the document opens, not 300ms later.
     func openDocument(_ metadata: MarkdownDocument) throws {
         let doc = try fileStore.load(metadata)
         document = doc
         content = doc.content
-        autoSaveManager.saveNow() // flush any pending save from the previous document
+        renderPreviewImmediately(markdown: doc.content)
+        autoSaveManager.saveNow()
     }
 
     /// Creates a new timestamped .md file on disk and opens it in the editor.
     func createNewDocument() throws {
-        autoSaveManager.saveNow() // flush any pending save from the previous document
+        autoSaveManager.saveNow()
         let doc = try fileStore.createNew()
         document = doc
         content = doc.content
+        renderPreviewImmediately(markdown: doc.content)
     }
 
     /// Flushes any pending auto-save immediately.
-    /// Call before the window closes or the app terminates.
     func saveNow() {
         autoSaveManager.saveNow()
+    }
+
+    // MARK: - Private
+
+    /// Renders and sets the full page HTML synchronously — used on document
+    /// open/create where we want the preview populated instantly, not after a
+    /// 300ms debounce window. Also resets previewBodyHTML so the web view does
+    /// a full reload (picking up the new page) rather than an incremental update.
+    private func renderPreviewImmediately(markdown: String) {
+        previewPageHTML = MarkdownRenderer.renderPage(from: markdown)
+        previewBodyHTML = ""
     }
 }

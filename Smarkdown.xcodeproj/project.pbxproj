@@ -14,18 +14,22 @@
 		1D002E3B1324E9A77DF68BC3 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E968C8E38E2A0DAA593716D2 /* ContentView.swift */; };
 		28A7E6E297FA555E8158364B /* EditorCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC740CC2247D889E41C86305 /* EditorCoordinator.swift */; };
 		2938E61AFD7B3919355B5567 /* MarkdownDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FDECCD74EAB83543E696D84 /* MarkdownDocument.swift */; };
+		2CC252669E83B3896ACF3D00 /* PreviewDebouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1281D8D794A975AFA5A4A390 /* PreviewDebouncer.swift */; };
 		4072BDB1122963BC76DB9011 /* AppAuth in Frameworks */ = {isa = PBXBuildFile; productRef = C21BE299E7AA3C1A7104E30F /* AppAuth */; };
 		641904A5B12A93E8BE4CE436 /* GoogleAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB299456B98B84E97F80190D /* GoogleAuthService.swift */; };
 		71F149664C9D63FA1D684BB6 /* EditorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 851FAB32CDEC0E0E57944DA8 /* EditorViewModel.swift */; };
 		9048F05332104E7AB5008C49 /* SmarkdownApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95E7CDD9F0733E3806469042 /* SmarkdownApp.swift */; };
 		C2D179CFA8BE91F67CF11067 /* AutoSaveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F24F48BE879BDE9B2F57EFA7 /* AutoSaveManager.swift */; };
+		D347233BE0A7EFD0A46D688B /* MarkdownTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FF65C493D1B801075D00CAB /* MarkdownTextView.swift */; };
 		D62F07B16A00E6F410C91CCD /* Down in Frameworks */ = {isa = PBXBuildFile; productRef = B91606E5620BFDE20BDE98B1 /* Down */; };
 		E03614853FA2084D148083FF /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E969573F8C5246E5E75C2A67 /* ExportView.swift */; };
 		FF340E0E18DB3B5757106463 /* MarkdownEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D7CF9950C02F1DCF99D4B4A /* MarkdownEditorView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		1281D8D794A975AFA5A4A390 /* PreviewDebouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewDebouncer.swift; sourceTree = "<group>"; };
 		13A68F222DF4D34DF7205572 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		1FF65C493D1B801075D00CAB /* MarkdownTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTextView.swift; sourceTree = "<group>"; };
 		213ECE70E06925C107EA79EF /* MarkdownRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownRenderer.swift; sourceTree = "<group>"; };
 		259BBF1BA9BFBE80695AD845 /* Smarkdown.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Smarkdown.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FDECCD74EAB83543E696D84 /* MarkdownDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownDocument.swift; sourceTree = "<group>"; };
@@ -113,6 +117,7 @@
 			isa = PBXGroup;
 			children = (
 				213ECE70E06925C107EA79EF /* MarkdownRenderer.swift */,
+				1281D8D794A975AFA5A4A390 /* PreviewDebouncer.swift */,
 			);
 			path = Markdown;
 			sourceTree = "<group>";
@@ -169,6 +174,7 @@
 				EC740CC2247D889E41C86305 /* EditorCoordinator.swift */,
 				851FAB32CDEC0E0E57944DA8 /* EditorViewModel.swift */,
 				3D7CF9950C02F1DCF99D4B4A /* MarkdownEditorView.swift */,
+				1FF65C493D1B801075D00CAB /* MarkdownTextView.swift */,
 			);
 			path = Editor;
 			sourceTree = "<group>";
@@ -275,6 +281,8 @@
 				FF340E0E18DB3B5757106463 /* MarkdownEditorView.swift in Sources */,
 				0D6F81B7E40AC30A6B46CF59 /* MarkdownPreviewView.swift in Sources */,
 				11FD199D488CE840C205FA9F /* MarkdownRenderer.swift in Sources */,
+				D347233BE0A7EFD0A46D688B /* MarkdownTextView.swift in Sources */,
+				2CC252669E83B3896ACF3D00 /* PreviewDebouncer.swift in Sources */,
 				9048F05332104E7AB5008C49 /* SmarkdownApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
