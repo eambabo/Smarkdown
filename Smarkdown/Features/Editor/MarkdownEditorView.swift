@@ -1,6 +1,33 @@
 import SwiftUI
 import AppKit
 
+/// Container view returned from makeNSView.
+///
+/// Holds a typed reference to the scroll view so updateNSView can retrieve
+/// it without a fragile positional subview lookup. AppKit's NSView.tag is
+/// read-only (unlike UIKit), so a subclass is the idiomatic alternative.
+final class EditorContainerView: NSView {
+    let scrollView: NSScrollView
+
+    init(scrollView: NSScrollView) {
+        self.scrollView = scrollView
+        super.init(frame: .zero)
+        autoresizingMask = [.width, .height]
+
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(scrollView)
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+        ])
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError() }
+}
+
 /// SwiftUI wrapper around NSScrollView > NSTextView.
 ///
 /// SwiftUI's built-in TextEditor exposes only a Binding<String>, which fires
@@ -10,7 +37,7 @@ import AppKit
 ///
 /// See Features/Editor/README.md for full rationale and data flow.
 ///
-/// Sizing strategy: makeNSView returns a plain NSView container. The scroll
+/// Sizing strategy: makeNSView returns an EditorContainerView. The scroll
 /// view is added as a subview with AutoLayout constraints pinning all four
 /// edges. SwiftUI controls the container's frame; AppKit constraints ensure
 /// the scroll view always fills it. This completely bypasses the
@@ -33,11 +60,7 @@ struct MarkdownEditorView: NSViewRepresentable {
         EditorCoordinator(onTextChange: onTextChange)
     }
 
-    func makeNSView(context: Context) -> NSView {
-        // Container: SwiftUI sizes this to fill the layout slot.
-        let container = NSView()
-        container.autoresizingMask = [.width, .height]
-
+    func makeNSView(context: Context) -> EditorContainerView {
         // scrollableTextView() is Apple's factory for a correctly-linked
         // NSScrollView > NSClipView > NSTextView hierarchy.
         let scrollView = NSTextView.scrollableTextView()
@@ -46,44 +69,33 @@ struct MarkdownEditorView: NSViewRepresentable {
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
 
-        guard let textView = scrollView.documentView as? NSTextView else {
-            return container
+        if let textView = scrollView.documentView as? NSTextView {
+            textView.isRichText = false
+            textView.allowsUndo = true
+            textView.isAutomaticQuoteSubstitutionEnabled = false
+            textView.isAutomaticDashSubstitutionEnabled = false
+            textView.isAutomaticTextReplacementEnabled = false
+            textView.isAutomaticSpellingCorrectionEnabled = false
+            textView.textContainerInset = NSSize(width: 16, height: 16)
+            textView.backgroundColor = NSColor.textBackgroundColor
+            textView.typingAttributes = Self.defaultTypingAttributes
+            textView.delegate = context.coordinator
         }
 
-        textView.isRichText = false
-        textView.allowsUndo = true
-        textView.isAutomaticQuoteSubstitutionEnabled = false
-        textView.isAutomaticDashSubstitutionEnabled = false
-        textView.isAutomaticTextReplacementEnabled = false
-        textView.isAutomaticSpellingCorrectionEnabled = false
-        textView.textContainerInset = NSSize(width: 16, height: 16)
-        textView.backgroundColor = NSColor.textBackgroundColor
-        textView.typingAttributes = Self.defaultTypingAttributes
-        textView.delegate = context.coordinator
-
-        // Pin scroll view to all four edges of the container using AutoLayout.
-        // This ensures the scroll view always fills whatever frame SwiftUI
-        // assigns to the container, regardless of intrinsicContentSize.
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(scrollView)
-        NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: container.topAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-        ])
-
-        return container
+        return EditorContainerView(scrollView: scrollView)
     }
 
-    func updateNSView(_ container: NSView, context: Context) {
-        guard let scrollView = container.subviews.first as? NSScrollView,
-              let textView = scrollView.documentView as? NSTextView else { return }
+    func updateNSView(_ container: EditorContainerView, context: Context) {
+        guard let textView = container.scrollView.documentView as? NSTextView else { return }
 
         // Refresh the coordinator's closure so it never calls into stale state.
+        // SwiftUI reuses coordinators across renders, but the closure is new each time.
         context.coordinator.onTextChange = onTextChange
 
         // Skip all string manipulation while the user is actively typing.
+        // isUserEditing is set by shouldChangeTextIn and cleared in textDidChange.
+        // This prevents a race where SwiftUI renders with a stale `text` value
+        // during the brief window between a keystroke and @Observable propagating.
         guard !context.coordinator.isUserEditing else { return }
 
         // Only write to textView.string when content changed externally
@@ -91,16 +103,21 @@ struct MarkdownEditorView: NSViewRepresentable {
         // render pass resets the cursor to position 0.
         if textView.string != text {
             textView.string = text
+            // Restore typing attributes — setting .string clears them.
             textView.typingAttributes = Self.defaultTypingAttributes
         }
     }
 
     // MARK: - Appearance
 
+    /// SF Mono at 14pt for source editing. Falls back to the system monospace
+    /// font if SF Mono is somehow unavailable (e.g. unusual system configuration).
     static let defaultFont: NSFont =
         NSFont(name: "SFMono-Regular", size: 14) ??
         NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
 
+    /// Dynamic colors (labelColor, textBackgroundColor) update automatically
+    /// when the user switches between light and dark mode.
     static let defaultTypingAttributes: [NSAttributedString.Key: Any] = [
         .font: defaultFont,
         .foregroundColor: NSColor.labelColor,

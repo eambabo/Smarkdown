@@ -36,7 +36,11 @@ final class EditorCoordinator: NSObject, NSTextViewDelegate {
     }
 
     func textDidChange(_ notification: Notification) {
-        guard let textView = notification.object as? NSTextView else { return }
+        guard let textView = notification.object as? NSTextView else {
+            // Guard failed — clear the flag so updateNSView doesn't get stuck.
+            isUserEditing = false
+            return
+        }
         // This is the hot path — keep it under 1ms.
         // No Markdown parsing, no view updates — just forward the string.
         onTextChange(textView.string)

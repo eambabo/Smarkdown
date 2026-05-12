@@ -28,7 +28,7 @@ Replace `NSTextView` + `NSViewRepresentable` with `UITextView` + `UIViewRepresen
 
 | File | Responsibility |
 |---|---|
-| `MarkdownEditorView.swift` | `NSViewRepresentable` returning an `NSView` container with the scroll view pinned inside via AutoLayout. Configures the text view and handles the `updateNSView` guard. |
+| `MarkdownEditorView.swift` | `NSViewRepresentable` returning an `EditorContainerView` (typed NSView subclass) with the scroll view pinned inside via AutoLayout. Configures the text view and handles the `updateNSView` guard. |
 | `EditorCoordinator.swift` | `NSTextViewDelegate` implementation. Receives `textDidChange` and routes text to the ViewModel. Kept in its own file to separate AppKit delegate logic from the SwiftUI wrapper. |
 | `EditorViewModel.swift` | `@MainActor @Observable` ViewModel. Owns the current document, handles text changes, coordinates with `AutoSaveManager`. |
 
@@ -40,28 +40,29 @@ Replace `NSTextView` + `NSViewRepresentable` with `UITextView` + `UIViewRepresen
 
 The fix is a two-part approach:
 
-**1. NSView container pattern**
+**1. EditorContainerView pattern**
 
-`makeNSView` returns a plain `NSView` container instead of the `NSScrollView` directly. SwiftUI controls the container's frame. The `NSScrollView` is pinned to all four edges of the container via AppKit AutoLayout constraints:
+`makeNSView` returns an `EditorContainerView` — a typed `NSView` subclass — instead of the `NSScrollView` directly. The subclass holds a `let scrollView: NSScrollView` property and pins it to all four edges of the container in its initializer:
 
 ```swift
-func makeNSView(context: Context) -> NSView {
-    let container = NSView()
-    let scrollView = NSTextView.scrollableTextView()
-    // ... configure textView ...
-    scrollView.translatesAutoresizingMaskIntoConstraints = false
-    container.addSubview(scrollView)
-    NSLayoutConstraint.activate([
-        scrollView.topAnchor.constraint(equalTo: container.topAnchor),
-        scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        scrollView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-        scrollView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-    ])
-    return container
+final class EditorContainerView: NSView {
+    let scrollView: NSScrollView
+    init(scrollView: NSScrollView) {
+        self.scrollView = scrollView
+        super.init(frame: .zero)
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(scrollView)
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
+        ])
+    }
 }
 ```
 
-SwiftUI owns the outer frame; AppKit constraints ensure the scroll view always fills it. The two layout systems each own their lane with no conflict.
+SwiftUI owns the outer frame; AppKit constraints ensure the scroll view always fills it. `updateNSView` receives `EditorContainerView` and accesses `container.scrollView` directly — no subview searching, no casting. This is safer than `NSView.tag` (which is read-only in AppKit) or a positional `subviews[0]` lookup.
 
 **2. HSplitView frame in ContentView**
 
