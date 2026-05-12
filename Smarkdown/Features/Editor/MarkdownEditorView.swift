@@ -61,32 +61,46 @@ struct MarkdownEditorView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> EditorContainerView {
-        // scrollableTextView() is Apple's factory for a correctly-linked
-        // NSScrollView > NSClipView > NSTextView hierarchy.
-        let scrollView = NSTextView.scrollableTextView()
+        // Build the scroll view + text view manually so we can use MarkdownTextView
+        // (our NSTextView subclass). NSTextView.scrollableTextView() does not accept
+        // a custom class, so we replicate its key sizing setup here.
+        let scrollView = NSScrollView()
         scrollView.borderType = .noBorder
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = false
         scrollView.autohidesScrollers = true
 
-        if let textView = scrollView.documentView as? NSTextView {
-            textView.isRichText = false
-            textView.allowsUndo = true
-            textView.isAutomaticQuoteSubstitutionEnabled = false
-            textView.isAutomaticDashSubstitutionEnabled = false
-            textView.isAutomaticTextReplacementEnabled = false
-            textView.isAutomaticSpellingCorrectionEnabled = false
-            textView.textContainerInset = NSSize(width: 16, height: 16)
-            textView.backgroundColor = NSColor.textBackgroundColor
-            textView.typingAttributes = Self.defaultTypingAttributes
-            textView.delegate = context.coordinator
-        }
+        let textView = MarkdownTextView()
+        // Sizing: text view starts small and grows vertically as content is added.
+        // maxSize is effectively unlimited — the layout manager extends the frame.
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        // Width tracks the scroll view's content area so text wraps at the pane edge.
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.widthTracksTextView = true
 
+        textView.isRichText = false
+        textView.allowsUndo = true
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.isAutomaticSpellingCorrectionEnabled = false
+        textView.textContainerInset = NSSize(width: 16, height: 16)
+        textView.backgroundColor = NSColor.textBackgroundColor
+        textView.typingAttributes = Self.defaultTypingAttributes
+        textView.delegate = context.coordinator
+
+        scrollView.documentView = textView
         return EditorContainerView(scrollView: scrollView)
     }
 
     func updateNSView(_ container: EditorContainerView, context: Context) {
-        guard let textView = container.scrollView.documentView as? NSTextView else { return }
+        guard let textView = container.scrollView.documentView as? MarkdownTextView else { return }
 
         // Refresh the coordinator's closure so it never calls into stale state.
         // SwiftUI reuses coordinators across renders, but the closure is new each time.
