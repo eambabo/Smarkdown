@@ -30,7 +30,7 @@ final class PreviewDebouncer {
         pendingTask?.cancel()
         pendingTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(300))
-            guard !Task.isCancelled, self != nil else { return }
+            guard !Task.isCancelled, let self else { return }
             let body = MarkdownRenderer.renderBody(from: markdown)
             onRendered(body)
         }

@@ -1,6 +1,7 @@
 import AppKit
 
-/// NSTextView subclass that adds Markdown formatting keyboard shortcuts.
+/// NSTextView subclass that adds Markdown formatting shortcuts and
+/// manual classification prefix detection.
 ///
 /// Uses performKeyEquivalent (⌘ key handler) rather than keyDown so the
 /// shortcuts integrate cleanly with the responder chain and don't interfere
@@ -11,6 +12,79 @@ import AppKit
 ///   - registers the change with the undo manager (⌘Z works)
 ///   - calls textDidChange — triggers EditorCoordinator → ViewModel → auto-save
 final class MarkdownTextView: NSTextView {
+
+    // MARK: - Classification
+
+    /// Set by the coordinator. Called after a classification prefix is
+    /// detected, stripped, and the newline inserted — with the trimmed
+    /// content text and its type.
+    var onClassification: ((ClassificationType, String) -> Void)?
+
+    /// Intercepts Return to detect slash command prefixes at the start of the
+    /// current line: `/t ` (task), `/i ` (idea), `/q ` (question). When found:
+    ///   1. Replaces the entire line up to the cursor with the trimmed content
+    ///      (strips the prefix and any trailing whitespace) — undo-safe.
+    ///   2. Inserts the newline via super.
+    ///   3. Notifies via onClassification so the coordinator can persist it.
+    ///
+    /// Prefix detection is only applied when the cursor is at the END of the
+    /// line (pressing Enter mid-line is left as normal newline insertion).
+    override func insertNewline(_ sender: Any?) {
+        let nsString    = string as NSString
+        let cursor      = selectedRange().location
+
+        // Find the start of the current paragraph.
+        let paragraphStart: Int
+        if cursor == 0 {
+            paragraphStart = 0
+        } else {
+            let searchRange = NSRange(location: 0, length: cursor)
+            let lastNewline = nsString.range(of: "\n", options: .backwards, range: searchRange)
+            paragraphStart  = lastNewline.location != NSNotFound ? lastNewline.location + 1 : 0
+        }
+
+        // Only process when cursor is at the end of the line.
+        let atEndOfLine: Bool = cursor >= nsString.length ||
+            nsString.character(at: cursor) == 10 // '\n'
+        guard atEndOfLine else {
+            super.insertNewline(sender)
+            return
+        }
+
+        let lineRange = NSRange(location: paragraphStart, length: cursor - paragraphStart)
+        let lineText  = nsString.substring(with: lineRange)
+        let lower     = lineText.lowercased()
+
+        let prefixLength: Int
+        let classificationType: ClassificationType
+
+        if lower.hasPrefix("/t ") {
+            prefixLength       = 3
+            classificationType = .task
+        } else if lower.hasPrefix("/i ") {
+            prefixLength       = 3
+            classificationType = .idea
+        } else if lower.hasPrefix("/q ") {
+            prefixLength       = 3
+            classificationType = .question
+        } else {
+            super.insertNewline(sender)
+            return
+        }
+
+        let content = String(lineText.dropFirst(prefixLength))
+            .trimmingCharacters(in: .whitespaces)
+        guard !content.isEmpty else {
+            super.insertNewline(sender)
+            return
+        }
+
+        // Replace the full line range with the trimmed content (strips prefix +
+        // trailing whitespace). Goes through insertText so undo is registered.
+        insertText(content, replacementRange: lineRange)
+        super.insertNewline(sender)
+        onClassification?(classificationType, content)
+    }
 
     // MARK: - Key handling
 

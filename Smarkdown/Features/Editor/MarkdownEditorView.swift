@@ -3,14 +3,17 @@ import AppKit
 
 /// Container view returned from makeNSView.
 ///
-/// Holds a typed reference to the scroll view so updateNSView can retrieve
-/// it without a fragile positional subview lookup. AppKit's NSView.tag is
-/// read-only (unlike UIKit), so a subclass is the idiomatic alternative.
+/// Holds typed references to the scroll view and classification ruler so
+/// updateNSView can reach them without fragile positional subview lookups.
+/// AppKit's NSView.tag is read-only (unlike UIKit), so a subclass is the
+/// idiomatic alternative.
 final class EditorContainerView: NSView {
     let scrollView: NSScrollView
+    let rulerView: ClassificationRulerView
 
-    init(scrollView: NSScrollView) {
+    init(scrollView: NSScrollView, rulerView: ClassificationRulerView) {
         self.scrollView = scrollView
+        self.rulerView  = rulerView
         super.init(frame: .zero)
         autoresizingMask = [.width, .height]
 
@@ -31,18 +34,12 @@ final class EditorContainerView: NSView {
 /// SwiftUI wrapper around NSScrollView > NSTextView.
 ///
 /// SwiftUI's built-in TextEditor exposes only a Binding<String>, which fires
-/// on every keystroke and triggers SwiftUI view diffing — too slow for a
-/// typing-intensive editor. NSTextView lets us observe edits through the text
-/// system's own delegate, bypassing SwiftUI's state machine on the hot path.
+/// on every keystroke and triggers SwiftUI diffs and potential full-hierarchy
+/// redraws — too slow for a typing-intensive editor. NSTextView lets us observe
+/// edits through the text system's own delegate, bypassing SwiftUI's state
+/// machine on the hot path.
 ///
 /// See Features/Editor/README.md for full rationale and data flow.
-///
-/// Sizing strategy: makeNSView returns an EditorContainerView. The scroll
-/// view is added as a subview with AutoLayout constraints pinning all four
-/// edges. SwiftUI controls the container's frame; AppKit constraints ensure
-/// the scroll view always fills it. This completely bypasses the
-/// intrinsicContentSize negotiation that causes NSScrollView to collapse to
-/// one line height when returned directly from makeNSView.
 struct MarkdownEditorView: NSViewRepresentable {
     typealias Coordinator = EditorCoordinator
 
@@ -50,9 +47,20 @@ struct MarkdownEditorView: NSViewRepresentable {
     /// is opened — NOT on every keystroke (the coordinator handles that path).
     let text: String
 
-    /// Called by the coordinator on every text change. Kept as a closure so
-    /// it is refreshed in updateNSView without recreating the coordinator.
+    /// Called by the coordinator on every text change.
     let onTextChange: (String) -> Void
+
+    /// Pre-computed (range, type) pairs for all classifications in the current
+    /// document. Drives the gutter ruler dots.
+    let classificationMarkers: [ClassificationMarker]
+
+    /// Called after a classification prefix is stripped and the line committed.
+    let onClassification: (ClassificationType, String) -> Void
+
+    /// When non-nil, the editor scrolls to the first occurrence of this text
+    /// and shows a find indicator. The id field changes on each new request
+    /// so the same text string can be re-targeted without being ignored.
+    let scrollRequest: EditorViewModel.ScrollRequest?
 
     // MARK: - NSViewRepresentable
 
@@ -61,79 +69,95 @@ struct MarkdownEditorView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> EditorContainerView {
-        // Build the scroll view + text view manually so we can use MarkdownTextView
-        // (our NSTextView subclass). NSTextView.scrollableTextView() does not accept
-        // a custom class, so we replicate its key sizing setup here.
+        // Build scroll view + text view manually so we can use MarkdownTextView
+        // (our NSTextView subclass). NSTextView.scrollableTextView() does not
+        // accept a custom class, so we replicate its key sizing setup here.
         let scrollView = NSScrollView()
-        scrollView.borderType = .noBorder
-        scrollView.hasVerticalScroller = true
+        scrollView.borderType            = .noBorder
+        scrollView.hasVerticalScroller   = true
         scrollView.hasHorizontalScroller = false
-        scrollView.autohidesScrollers = true
+        scrollView.autohidesScrollers    = true
 
         let textView = MarkdownTextView()
-        // Sizing: text view starts small and grows vertically as content is added.
-        // maxSize is effectively unlimited — the layout manager extends the frame.
-        textView.minSize = NSSize(width: 0, height: 0)
-        textView.maxSize = NSSize(
+        textView.minSize    = NSSize(width: 0, height: 0)
+        textView.maxSize    = NSSize(
             width: CGFloat.greatestFiniteMagnitude,
             height: CGFloat.greatestFiniteMagnitude
         )
-        textView.isVerticallyResizable = true
+        textView.isVerticallyResizable   = true
         textView.isHorizontallyResizable = false
-        // Width tracks the scroll view's content area so text wraps at the pane edge.
-        textView.autoresizingMask = [.width]
+        textView.autoresizingMask        = [.width]
         textView.textContainer?.widthTracksTextView = true
 
-        textView.isRichText = false
-        textView.allowsUndo = true
-        textView.isAutomaticQuoteSubstitutionEnabled = false
-        textView.isAutomaticDashSubstitutionEnabled = false
-        textView.isAutomaticTextReplacementEnabled = false
-        textView.isAutomaticSpellingCorrectionEnabled = false
-        textView.textContainerInset = NSSize(width: 16, height: 16)
-        textView.backgroundColor = NSColor.textBackgroundColor
-        textView.typingAttributes = Self.defaultTypingAttributes
-        textView.delegate = context.coordinator
+        textView.isRichText                              = false
+        textView.allowsUndo                              = true
+        textView.isAutomaticQuoteSubstitutionEnabled     = false
+        textView.isAutomaticDashSubstitutionEnabled      = false
+        textView.isAutomaticTextReplacementEnabled       = false
+        textView.isAutomaticSpellingCorrectionEnabled    = false
+        textView.textContainerInset                      = NSSize(width: 16, height: 16)
+        textView.backgroundColor                         = NSColor.textBackgroundColor
+        textView.typingAttributes                        = Self.defaultTypingAttributes
+        textView.delegate                                = context.coordinator
+
+        // Wire classification callback through the coordinator.
+        let coordinator = context.coordinator
+        textView.onClassification = { type, content in
+            coordinator.onClassification?(type, content)
+        }
+
+        // Install the classification gutter ruler.
+        let rulerView = ClassificationRulerView(scrollView: scrollView, orientation: .verticalRuler)
+        rulerView.ruleThickness       = 20
+        scrollView.verticalRulerView  = rulerView
+        scrollView.hasVerticalRuler   = true
+        scrollView.rulersVisible      = true
+        rulerView.clientView          = textView
 
         scrollView.documentView = textView
-        return EditorContainerView(scrollView: scrollView)
+        return EditorContainerView(scrollView: scrollView, rulerView: rulerView)
     }
 
     func updateNSView(_ container: EditorContainerView, context: Context) {
         guard let textView = container.scrollView.documentView as? MarkdownTextView else { return }
 
-        // Refresh the coordinator's closure so it never calls into stale state.
-        // SwiftUI reuses coordinators across renders, but the closure is new each time.
-        context.coordinator.onTextChange = onTextChange
+        // Refresh callbacks so they never call into stale ViewModel state.
+        context.coordinator.onTextChange     = onTextChange
+        context.coordinator.onClassification = onClassification
 
-        // Skip all string manipulation while the user is actively typing.
-        // isUserEditing is set by shouldChangeTextIn and cleared in textDidChange.
-        // This prevents a race where SwiftUI renders with a stale `text` value
-        // during the brief window between a keystroke and @Observable propagating.
-        guard !context.coordinator.isUserEditing else { return }
+        // Update gutter dots — independent of editing state so the ruler
+        // always reflects the latest classification data.
+        container.rulerView.dots = classificationMarkers.map {
+            ClassificationRulerView.Marker(characterRange: $0.range, type: $0.type)
+        }
 
-        // Only write to textView.string when content changed externally
-        // (e.g. a new document was opened). Without this guard, every SwiftUI
-        // render pass resets the cursor to position 0.
-        if textView.string != text {
-            textView.string = text
-            // Restore typing attributes — setting .string clears them.
+        // Update text content when a new document is opened (not during typing).
+        if !context.coordinator.isUserEditing && textView.string != text {
+            textView.string           = text
             textView.typingAttributes = Self.defaultTypingAttributes
+        }
+
+        // Handle scroll-to-line requests from task navigation.
+        // Runs after any text update above so the range search hits the right content.
+        if let req = scrollRequest, req.id != context.coordinator.lastScrollRequestID {
+            context.coordinator.lastScrollRequestID = req.id
+            let nsString = textView.string as NSString
+            let range = nsString.range(of: req.text)
+            if range.location != NSNotFound {
+                textView.scrollRangeToVisible(range)
+                textView.showFindIndicator(for: range)
+            }
         }
     }
 
     // MARK: - Appearance
 
-    /// SF Mono at 14pt for source editing. Falls back to the system monospace
-    /// font if SF Mono is somehow unavailable (e.g. unusual system configuration).
     static let defaultFont: NSFont =
         NSFont(name: "SFMono-Regular", size: 14) ??
         NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
 
-    /// Dynamic colors (labelColor, textBackgroundColor) update automatically
-    /// when the user switches between light and dark mode.
     static let defaultTypingAttributes: [NSAttributedString.Key: Any] = [
-        .font: defaultFont,
+        .font:            defaultFont,
         .foregroundColor: NSColor.labelColor,
     ]
 }

@@ -7,9 +7,14 @@ import AppKit
 /// and reused across renders — only its `onTextChange` closure is refreshed
 /// in updateNSView to stay in sync with the latest ViewModel state.
 final class EditorCoordinator: NSObject, NSTextViewDelegate {
-    /// Updated on every updateNSView call so the closure always captures
+    /// Updated on every updateNSView call so closures always capture
     /// the current ViewModel state without retaining a stale copy.
     var onTextChange: (String) -> Void
+    var onClassification: ((ClassificationType, String) -> Void)?
+
+    /// Tracks the last scroll request handled so we don't re-scroll on
+    /// unrelated updateNSView calls.
+    var lastScrollRequestID: UUID? = nil
 
     /// True while AppKit is processing a user-initiated text change.
     /// updateNSView checks this flag to avoid overwriting the text view's

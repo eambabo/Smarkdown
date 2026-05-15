@@ -51,3 +51,4 @@ targets:
     dependencies:
       - package: Down
       - package: AppAuth
+      - sdk: libsqlite3.tbd

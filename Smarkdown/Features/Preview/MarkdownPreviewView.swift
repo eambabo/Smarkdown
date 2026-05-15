@@ -40,7 +40,13 @@ struct MarkdownPreviewView: NSViewRepresentable {
     // MARK: - NSViewRepresentable
 
     func makeNSView(context: Context) -> WKWebView {
-        let webView = WKWebView()
+        // Disable content JavaScript so raw <script> blocks in user Markdown
+        // cannot execute in the preview. This does NOT affect evaluateJavaScript
+        // calls made by the host app — those are privileged and bypass this setting.
+        let config = WKWebViewConfiguration()
+        config.defaultWebpagePreferences.allowsContentJavaScript = false
+
+        let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
         // Match the system background so the area below short documents
         // doesn't flash white in dark mode.
@@ -58,12 +64,9 @@ struct MarkdownPreviewView: NSViewRepresentable {
         } else if !bodyHTML.isEmpty {
             // Incremental typing update — swap body content without reloading.
             // JSON-encode the HTML so any quotes/slashes inside are escaped safely.
-            guard let data = try? JSONSerialization.data(withJSONObject: bodyHTML),
+            guard let data = try? JSONSerialization.data(withJSONObject: bodyHTML, options: .fragmentsAllowed),
                   let json = String(data: data, encoding: .utf8) else { return }
-            webView.evaluateJavaScript(
-                "document.body.innerHTML = \(json)",
-                completionHandler: nil
-            )
+            webView.evaluateJavaScript("document.body.innerHTML = \(json)")
         }
     }
 }

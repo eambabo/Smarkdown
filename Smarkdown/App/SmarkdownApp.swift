@@ -8,9 +8,8 @@ struct SmarkdownApp: App {
         }
         .defaultSize(width: 1200, height: 800)
 
-        WindowGroup("Documents", id: "documents") {
-            FileListView()
+        Settings {
+            PreferencesView()
         }
-        .defaultSize(width: 380, height: 640)
     }
 }
